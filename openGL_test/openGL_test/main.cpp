@@ -10,7 +10,9 @@
 #include "Physics.h"
 #include "Ball.h"
 
-#define RADIUS 5
+#define RADIUS 15 //Ball.cpp에도 있음.
+#define RATIO 0.02 //당구대 크기에 따라 달라질 수 있음.
+#define MAXLINE 2.236068*400
 //#define WIDTH 400
 //#define HEIGHT 400
 //#define originX 50
@@ -20,13 +22,14 @@ using namespace std;
 
 static bool	mouseLeftDown;
 static float point[2][2];
+static Vector3 line_end;
 
 //static float theta;
 
 
-Vector3 yellowBallP(100, 200, 0);
-Vector3 redBallP(200, 100, 0);
-Vector3 whiteBallP(200, 300, 0);
+Vector3 yellowBallP(250, 120, 0);
+Vector3 redBallP(250, 250, 0);
+Vector3 whiteBallP(350, 350, 0);
 //Vector3 yellowBallD(0, 0, 0);
 
 Ball yellowBall(yellowBallP);
@@ -62,7 +65,7 @@ void RenderScene(void)
 	//glEnd();
 
 	//Balls
-	glPointSize(10);
+	glPointSize(RADIUS*2);
 	glBegin(GL_POINTS);
 		glColor3f(1, 0.9, 0.1);
 		yellowBall.Draw();
@@ -80,7 +83,7 @@ void RenderScene(void)
 		glColor3f(0, 0, 1);
 		glBegin(GL_LINES);
 			glVertex2fv(point[0]);
-			glVertex2fv(point[1]);
+			glVertex3f(line_end.x, line_end.y, line_end.z);
 		glEnd();
 
 		glDisable(GL_LINE_STIPPLE);
@@ -121,7 +124,7 @@ void ChangeSize(int w, int h) {
 	if (w <= h)
 		gluOrtho2D(0, 500.0, 0, 500.0*(float)h / (float)w);
 	else
-		gluOrtho2D(0, 500.0*(float)w / (float)h, 0, 500);
+		gluOrtho2D(0, 500.0*(float)w / (float)h, 0, 500.0);
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
@@ -159,7 +162,7 @@ void mouseButton(int button, int state, int x, int y)
 				glGetDoublev(GL_VIEWPORT, viewport);
 
 				point[0][0] = x / (float)viewport[2] * 500;
-				point[0][1] = (viewport[3] - y) / (float)viewport[3] * 500;
+				point[0][1] = (viewport[3] - y) / (float)viewport[3] * 900;
 				point[1][0] = point[0][0];
 				point[1][1] = point[0][1];
 				cout << "glutdown," << endl;
@@ -184,32 +187,39 @@ void mouseMotion(int x, int y)
 		//cout << "viewport : (" << viewport[0] << "," << viewport[1] << "," << viewport[2] << "," << viewport[3] << ")" << endl;
 
 		point[1][0] = x / (float)viewport[2] * 500;
-		point[1][1] = (viewport[3] - y) / (float)viewport[3] * 500;
+		point[1][1] = (viewport[3] - y) / (float)viewport[3] * 900;
 		//cout << "point(" << point[1][0] << "," << point[1][1] << ")" << endl;
+
 		////////노란공 백터////////
 		if (sqrt((point[0][0]-yellowBall.transform->position.x)*(point[0][0] - yellowBall.transform->position.x)+
 				(point[0][1]- yellowBall.transform->position.y)*(point[0][1] - yellowBall.transform->position.y))<=RADIUS) {
 			yellowBall.transform->velocity.x = (point[1][0] - yellowBall.transform->position.x);
 			yellowBall.transform->velocity.y = (point[1][1] - yellowBall.transform->position.y);
-			//cout << "vector(" << yellowBall.transform->velocity.x << "," << yellowBall.transform->velocity.y << ")";
-			yellowBall.transform->velocity = yellowBall.transform->velocity.normalize() * 2.0;
+			//cout << "velocity(" << yellowBall.transform->velocity.x << "," << yellowBall.transform->velocity.y << ")"<<"length : "<< yellowBall.transform->velocity.length();
+			yellowBall.transform->velocity = yellowBall.transform->velocity * RATIO;//yellowBall.transform->velocity = yellowBall.transform->velocity.normalize() * 2;
 			yellowBall.transform->SetAccel();
-			//cout << "unit : (" << yellowBall.transform->velocity.x << "," << yellowBall.transform->velocity.y << ")" << endl;
+			//cout << "unit : (" << "v" << yellowBall.transform->velocity.x << "," << yellowBall.transform->velocity.y << ")" << endl;
+			//cout << "unit : (" << "a" << yellowBall.transform->GetAccel().x << "," << yellowBall.transform->GetAccel().y << ")" << endl;
 		}
 		else if (sqrt((point[0][0] - redBall.transform->position.x)*(point[0][0] - redBall.transform->position.x) +
 				(point[0][1] - redBall.transform->position.y)*(point[0][1] - redBall.transform->position.y)) <= RADIUS) { 
 			redBall.transform->velocity.x = (point[1][0] - redBall.transform->position.x);
 			redBall.transform->velocity.y = (point[1][1] - redBall.transform->position.y);
-			redBall.transform->velocity= redBall.transform->velocity.normalize()*2.0;
+			redBall.transform->velocity = redBall.transform->velocity * RATIO;
 			redBall.transform->SetAccel();
 		}
 		else if (sqrt((point[0][0] - whiteBall.transform->position.x)*(point[0][0] - whiteBall.transform->position.x) +
 				(point[0][1] - whiteBall.transform->position.y)*(point[0][1] - whiteBall.transform->position.y)) <= RADIUS) {
 			whiteBall.transform->velocity.x = (point[1][0] - whiteBall.transform->position.x);
 			whiteBall.transform->velocity.y = (point[1][1] - whiteBall.transform->position.y);
-			whiteBall.transform->velocity = whiteBall.transform->velocity.normalize() * 2.0;
+			whiteBall.transform->velocity = whiteBall.transform->velocity * RATIO;
 			whiteBall.transform->SetAccel();
 		}
+
+		Vector3 start_point(point[0][0], point[0][1], 0);
+		Vector3 end_point(point[1][0], point[1][1], 0);
+		line_end = end_point + (end_point - start_point)*MAXLINE;
+		
 
 	}
 	glutPostRedisplay();
@@ -240,7 +250,7 @@ void main(int argc, char* argv[])
 {
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
-	glutInitWindowSize(500, 500);
+	glutInitWindowSize(500, 900);
 	glutCreateWindow("Test_hyeon");
 	glutDisplayFunc(RenderScene);
 	glutReshapeFunc(ChangeSize);

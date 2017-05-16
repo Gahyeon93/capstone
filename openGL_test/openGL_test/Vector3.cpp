@@ -23,7 +23,7 @@ Vector3::~Vector3()
 Vector3 Vector3::normalize()
 {
 	float l = sqrt(x*x + y*y + z*z);
-	
+	if (l == 0) return(*this);
 	x /= l;
 	y /= l ;
 	z /= l;

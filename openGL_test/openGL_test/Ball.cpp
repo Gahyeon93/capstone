@@ -8,9 +8,9 @@
 #include "Ball.h"
 #include "Physics.h"
 
-#define RADIUS 5
+#define RADIUS 15
 
-float GameObject::HEIGHT = 400;
+float GameObject::HEIGHT = 800;
 float GameObject::WIDTH = 400;
 float GameObject::originX = 50;
 float GameObject::originY = 50;
@@ -33,79 +33,136 @@ void Ball::move()
 {
 	this->transform->position.x += this->transform->velocity.x;
 	this->transform->position.y += this->transform->velocity.y;
-	//printf("%f, %f, %f\n", this->transform->velocity.x, this->transform->velocity.y, this->transform->velocity.z);
-	this->transform->velocity = this->transform->velocity - this->transform->GetAccel(); //this->transform->velocity -= this->transform->velocity * 0.001;
+	//if (this->transform->velocity.x != 0 && this->transform->velocity.y != 0)
+		this->transform->velocity = this->transform->velocity - this->transform->GetAccel();
+//	if (this->transform->velocity.x)
+//		this->transform->velocity.x = this->transform->velocity.x - this->transform->GetAccel().x; //this->transform->velocity -= this->transform->velocity * 0.001;
 	//printf("GetAccel : %f,%f,%f\n", this->transform->InitAccel.x, this->transform->InitAccel.y, this->transform->InitAccel.z);
 	//printf("%f, %f, %f\n", this->transform->velocity.x, this->transform->velocity.y, this->transform->velocity.z);
+//	if (this->transform->velocity.y)
+//		this->transform->velocity.y = this->transform->velocity.y - this->transform->GetAccel().y;
 
-
-	if (fabs(this->transform->velocity.x) < 0.000001) this->transform->velocity.x = 0;
-	if (fabs(this->transform->velocity.y) < 0.000001) this->transform->velocity.y = 0;
+	if (fabs(this->transform->velocity.x) < this->transform->GetAccel().x) {
+		this->transform->velocity.x = 0;
+	}
+	if (fabs(this->transform->velocity.y) < this->transform->GetAccel().y) {
+		this->transform->velocity.y = 0;
+	}
 	this->transform->SetAccel();
+	//if (this->transform->velocity.x == 0) this->transform->SetAccel(0, 1, 1);
+	//if (this->transform->velocity.y == 0)
+//	this->transform->SetAccel(1, 0, 1);
+	
 	/*운동량_질량 = 50;*/
 	this->transform->p = Vector3(50 * this->transform->velocity.x, 50 * this->transform->velocity.y, 50 * this->transform->velocity.z);
 }
 
 void Ball::BoundaryCollision()
 {
-	if (this->transform->position.x <= originX) {
-		this->transform->position.x = originX;
+	if (this->transform->position.x <= originX+RADIUS) {
+		this->transform->position.x = originX + RADIUS;
 		this->transform->velocity.x = -this->transform->velocity.x;
 	}
-	else if (this->transform->position.x >= originX + WIDTH) {
-		this->transform->position.x = originX + WIDTH;
+	else if (this->transform->position.x >= originX + WIDTH - RADIUS) {
+		this->transform->position.x = originX + WIDTH - RADIUS;
 		this->transform->velocity.x = -this->transform->velocity.x;
 	}
-	if (this->transform->position.y <= originY) {
-		this->transform->position.y = originY;
+	if (this->transform->position.y <= originY + RADIUS) {
+		this->transform->position.y = originY + RADIUS;
 		this->transform->velocity.y = -this->transform->velocity.y;
 	}
-	else if (this->transform->position.y >= originY + HEIGHT) {
-		this->transform->position.y = originY + HEIGHT;
+	else if (this->transform->position.y >= originY + HEIGHT - RADIUS) {
+		this->transform->position.y = originY + HEIGHT - RADIUS;
 		this->transform->velocity.y = -this->transform->velocity.y;
 	}
 }
 
-void Ball::collise(Ball &A,Ball &B)//A,B,C 완전탄성운동
+void Ball::collise(Ball &A,Ball &B)//수정
 {
-	if (A.transform->position.distance(this->transform->position) <= 2*RADIUS) {
-		Vector3 temp;
+	float e = 0.9;//탄성계수
 
-		temp = A.transform->velocity;
-		A.transform->velocity = (this->transform->velocity*0.5) - (A.transform->velocity*0.5);// *0.9;
-		//printf("공 속도 : %f,%f,%f\n", this->transform->velocity.x, this->transform->velocity.y, this->transform->velocity.z);
-		this->transform->velocity = (temp*0.5)-(this->transform->velocity*0.5);
+	if (A.transform->position.distance(this->transform->position) <= 2*RADIUS) {
+		Vector3 tempAv = A.transform->velocity;
+		Vector3 tempTv = this->transform->velocity;
+
+		/*this 충돌방향벡터*/
+		Vector3 tempdir;
+		tempdir = this->transform->position - A.transform->position;
+		tempdir.normalize();
+
+		this->transform->position = A.transform->position + (tempdir.normalize()*RADIUS * 2);//겹치지 않게 재배치
+
+		float temptv;
+		temptv = ((tempTv.x*tempdir.x) + (tempTv.y*tempdir.y)) / tempdir.length();//충돌방향으로의 this속도성분
+		tempdir = tempdir*temptv;
+		
+		A.transform->velocity = A.transform->velocity + tempdir*e;
+		this->transform->velocity = this->transform->velocity - tempdir*e;
+
+		/*A 충돌방향벡터*/
+		tempdir = A.transform->position - this->transform->position;
+		tempdir.normalize();
+		float tempav;
+		tempav= ((tempAv.x*tempdir.x) + (tempAv.y*tempdir.y)) / tempdir.length();//충돌방향으로의 this속도성분
+		tempdir = tempdir*tempav;
+		A.transform->velocity = A.transform->velocity - tempdir*e;
+		this->transform->velocity = this->transform->velocity + tempdir*e;
+		
+		//printf("공 속/도 : %f,%f,%f\n", this->transform->velocity.x, this->transform->velocity.y, this->transform->velocity.z);
 		//printf("바뀐 공 속도 : %f,%f,%f\n", this->transform->velocity.x, this->transform->velocity.y, this->transform->velocity.z);
-		this->transform->SetAccel();
-		A.transform->SetAccel();
+
 	}
 	else if (B.transform->position.distance(this->transform->position) <= 2 * RADIUS) {
-		Vector3 temp;
-		
-		/*temp = A.transform->velocity;
-		B.transform->velocity = this->transform->velocity;
-		this->transform->velocity = temp;*/
-		temp = B.transform->velocity;
-		B.transform->velocity = (this->transform->velocity*0.5) - (B.transform->velocity*0.5);// *0.9;
-																							  //printf("공 속도 : %f,%f,%f\n", this->transform->velocity.x, this->transform->velocity.y, this->transform->velocity.z);
-		this->transform->velocity = (temp*0.5) - (this->transform->velocity*0.5);
-		this->transform->SetAccel();
-		B.transform->SetAccel();
+		Vector3 tempAv = B.transform->velocity;
+		Vector3 tempTv = this->transform->velocity;
+
+		/*this 충돌방향벡터*/
+		Vector3 tempdir;
+		tempdir = this->transform->position - B.transform->position;
+		tempdir.normalize();
+		this->transform->position = B.transform->position + (tempdir.normalize()*RADIUS * 2);//겹치지 않게 재배치
+
+		float temptv;
+		temptv = ((tempTv.x*tempdir.x) + (tempTv.y*tempdir.y)) / tempdir.length();//충돌방향으로의 this속도성분
+		tempdir = tempdir*temptv;
+
+		B.transform->velocity = B.transform->velocity + tempdir*e;
+		this->transform->velocity = this->transform->velocity - tempdir*e;
+
+		/*A 충돌방향벡터*/
+		tempdir = B.transform->position - this->transform->position;
+		tempdir.normalize();
+		float tempav;
+		tempav = ((tempAv.x*tempdir.x) + (tempAv.y*tempdir.y)) / tempdir.length();//충돌방향으로의 this속도성분
+		tempdir = tempdir*tempav;
+		B.transform->velocity = B.transform->velocity - tempdir*e;
+		this->transform->velocity = this->transform->velocity + tempdir*e;
 	}
 	else if (A.transform->position.distance(B.transform->position) <= 2 * RADIUS) {
-		Vector3 temp;
-		//temp = this->transform->velocity * (RADIUS / this->transform->velocity.length());
-		//this->transform->position = B.transform->position - temp * 2.0;
+		Vector3 tempAv = B.transform->velocity;
+		Vector3 tempTv = A.transform->velocity;
 
-		/*temp = B.transform->velocity;
-		B.transform->velocity = A.transform->velocity;
-		A.transform->velocity = temp;*/
-		temp = A.transform->velocity;
-		A.transform->velocity = (B.transform->velocity*0.5) - (A.transform->velocity*0.5);// *0.9;
-																							  //printf("공 속도 : %f,%f,%f\n", this->transform->velocity.x, this->transform->velocity.y, this->transform->velocity.z);
-		B.transform->velocity = (temp*0.5) - (B.transform->velocity*0.5);
-		A.transform->SetAccel();
-		B.transform->SetAccel();
+		/*this 충돌방향벡터*/
+		Vector3 tempdir;
+		tempdir = A.transform->position - B.transform->position;
+		tempdir.normalize();
+		A.transform->position = B.transform->position + (tempdir.normalize()*RADIUS * 2);//겹치지 않게 재배치
+
+		float temptv;
+		temptv = ((tempTv.x*tempdir.x) + (tempTv.y*tempdir.y)) / tempdir.length();//충돌방향으로의 this속도성분
+		tempdir = tempdir*temptv;
+
+		B.transform->velocity = B.transform->velocity + tempdir*e;
+		A.transform->velocity = A.transform->velocity - tempdir*e;
+
+		/*A 충돌방향벡터*/
+		tempdir = B.transform->position - A.transform->position;
+		tempdir.normalize();
+		float tempav;
+		tempav = ((tempAv.x*tempdir.x) + (tempAv.y*tempdir.y)) / tempdir.length();//충돌방향으로의 this속도성분
+		tempdir = tempdir*tempav;
+		B.transform->velocity = B.transform->velocity - tempdir*e;
+		A.transform->velocity = A.transform->velocity + tempdir*e;
 	}
 }
 

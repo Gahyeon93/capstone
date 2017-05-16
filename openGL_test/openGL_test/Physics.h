@@ -44,7 +44,7 @@ public:
 	~Transform();
 
 	//Functions
-	void SetAccel(void);
+	void SetAccel();
 	Vector3 GetAccel();
 
 	const Vector3* const Getforward(void);

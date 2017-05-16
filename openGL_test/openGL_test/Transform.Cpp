@@ -24,12 +24,16 @@ Transform::Transform(Vector3 pos) : position(pos)
 	InitAccel = Vector3(0, 0, 0);
 }
 
-void Transform::SetAccel(void)
+void Transform::SetAccel()
 {
+	Vector3 temp = this->velocity;
 	//printf("velocity : %f,%f,%f\n", this->velocity.x, this->velocity.y, this->velocity.z);
 	this->InitAccel = Vector3(0, 0, 0);
 	//printf("InitAccel : %f,%f,%f\n", this->InitAccel.x, this->InitAccel.y, this->InitAccel.z);
-	this->InitAccel = this->InitAccel + (this->velocity * 0.005);
+	this->InitAccel = temp.normalize()*0.005;
+	//if (x) this->InitAccel.x = this->InitAccel.x + (this->velocity.x * 0.005);
+	//if (y) this->InitAccel.y = this->InitAccel.y + (this->velocity.y * 0.005);
+	//if (z) this->InitAccel.z = this->InitAccel.z + (this->velocity.z * 0.005);
 	//printf("SetAccel : %f,%f,%f\n", this->InitAccel.x, this->InitAccel.y, this->InitAccel.z);
 }
 
