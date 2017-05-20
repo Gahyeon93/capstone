@@ -101,3 +101,15 @@ Vector3 Vector3::operator+(const Vector3 Input) const
 	return result;
 	return Vector3();
 }
+
+Vector3 Vector3::operator/(const float Input) const
+{
+	Vector3 result;
+	result = *this;
+
+	result.x = result.x/Input;
+	result.y = result.y/Input;
+	result.z = result.z/Input;
+
+	return result;
+}

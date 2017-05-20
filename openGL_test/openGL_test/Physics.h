@@ -19,6 +19,7 @@ public:
 	Vector3    operator *(const double dInput) const;
 	Vector3	   operator -(const Vector3 Input) const;
 	Vector3	   operator +(const Vector3 Input) const;
+	Vector3	   operator /(const float Input) const;
 
 };
 

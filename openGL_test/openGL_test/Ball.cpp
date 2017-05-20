@@ -87,10 +87,10 @@ void Ball::collise(Ball &A,Ball &B)//수정
 
 		/*this 충돌방향벡터*/
 		Vector3 tempdir;
-		tempdir = this->transform->position - A.transform->position;
+		tempdir = A.transform->position - this->transform->position;
 		tempdir.normalize();
 
-		this->transform->position = A.transform->position + (tempdir.normalize()*RADIUS * 2);//겹치지 않게 재배치
+		this->transform->position = A.transform->position - (tempdir.normalize()*RADIUS * 2);//겹치지 않게 재배치
 
 		float temptv;
 		temptv = ((tempTv.x*tempdir.x) + (tempTv.y*tempdir.y)) / tempdir.length();//충돌방향으로의 this속도성분
@@ -100,7 +100,7 @@ void Ball::collise(Ball &A,Ball &B)//수정
 		this->transform->velocity = this->transform->velocity - tempdir*e;
 
 		/*A 충돌방향벡터*/
-		tempdir = A.transform->position - this->transform->position;
+		tempdir = this->transform->position - A.transform->position;
 		tempdir.normalize();
 		float tempav;
 		tempav= ((tempAv.x*tempdir.x) + (tempAv.y*tempdir.y)) / tempdir.length();//충돌방향으로의 this속도성분
@@ -118,9 +118,9 @@ void Ball::collise(Ball &A,Ball &B)//수정
 
 		/*this 충돌방향벡터*/
 		Vector3 tempdir;
-		tempdir = this->transform->position - B.transform->position;
+		tempdir = B.transform->position - this->transform->position;
 		tempdir.normalize();
-		this->transform->position = B.transform->position + (tempdir.normalize()*RADIUS * 2);//겹치지 않게 재배치
+		this->transform->position = B.transform->position - (tempdir.normalize()*RADIUS * 2);//겹치지 않게 재배치
 
 		float temptv;
 		temptv = ((tempTv.x*tempdir.x) + (tempTv.y*tempdir.y)) / tempdir.length();//충돌방향으로의 this속도성분
@@ -130,7 +130,7 @@ void Ball::collise(Ball &A,Ball &B)//수정
 		this->transform->velocity = this->transform->velocity - tempdir*e;
 
 		/*A 충돌방향벡터*/
-		tempdir = B.transform->position - this->transform->position;
+		tempdir = this->transform->position - B.transform->position;
 		tempdir.normalize();
 		float tempav;
 		tempav = ((tempAv.x*tempdir.x) + (tempAv.y*tempdir.y)) / tempdir.length();//충돌방향으로의 this속도성분
@@ -144,9 +144,9 @@ void Ball::collise(Ball &A,Ball &B)//수정
 
 		/*this 충돌방향벡터*/
 		Vector3 tempdir;
-		tempdir = A.transform->position - B.transform->position;
+		tempdir = B.transform->position - A.transform->position;
 		tempdir.normalize();
-		A.transform->position = B.transform->position + (tempdir.normalize()*RADIUS * 2);//겹치지 않게 재배치
+		A.transform->position = B.transform->position - (tempdir.normalize()*RADIUS * 2);//겹치지 않게 재배치
 
 		float temptv;
 		temptv = ((tempTv.x*tempdir.x) + (tempTv.y*tempdir.y)) / tempdir.length();//충돌방향으로의 this속도성분
@@ -156,7 +156,7 @@ void Ball::collise(Ball &A,Ball &B)//수정
 		A.transform->velocity = A.transform->velocity - tempdir*e;
 
 		/*A 충돌방향벡터*/
-		tempdir = B.transform->position - A.transform->position;
+		tempdir = A.transform->position - B.transform->position;
 		tempdir.normalize();
 		float tempav;
 		tempav = ((tempAv.x*tempdir.x) + (tempAv.y*tempdir.y)) / tempdir.length();//충돌방향으로의 this속도성분
