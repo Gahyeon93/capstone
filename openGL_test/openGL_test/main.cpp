@@ -30,12 +30,13 @@ static Vector3 start_point;
 static Vector3 end_point;
 static Vector3 reflect_point[5];
 static char count_reflect=-1;
+static float e = 0.9;
 
 //static float theta;
 
 
 Vector3 yellowBallP(250, 120, 0);
-Vector3 redBallP(250, 250, 0);
+Vector3 redBallP(200, 400, 0);
 Vector3 whiteBallP(350, 350, 0);
 //Vector3 yellowBallD(0, 0, 0);
 
@@ -89,7 +90,7 @@ void RenderScene(void)
 		glLineStipple(3, 0xcccc);
 		glColor3f(0, 0, 1);
 		glBegin(GL_LINES);
-			glVertex2fv(point[0]);
+		glVertex3f(start_point.x, start_point.y, start_point.z);// 2fv(point[0]);
 			if (count_reflect >= 0) for (int i = 0; i <= count_reflect; i++) {
 				glVertex3f(reflect_point[i].x, reflect_point[i].y, reflect_point[i].z);
 				glEnd();
@@ -180,6 +181,7 @@ void mouseButton(int button, int state, int x, int y)
 				point[0][1] = (viewport[3] - y) / (float)viewport[3] * 900;
 				point[1][0] = point[0][0];
 				point[1][1] = point[0][1];
+				start_point = Vector3(point[0][0], point[0][1], 0);
 				cout << "glutdown," << endl;
 				mouseLeftDown = true;
 			}
@@ -206,7 +208,7 @@ void mouseMotion(int x, int y)
 		point[1][1] = (viewport[3] - y) / (float)viewport[3] * 900;
 		//cout << "point(" << point[1][0] << "," << point[1][1] << ")" << endl;
 
-		start_point = Vector3(point[0][0], point[0][1], 0);
+		
 		end_point = Vector3(point[1][0], point[1][1], 0);
 		line_end = start_point + (end_point - start_point).normalize() * MAXLINE;
 		
@@ -215,149 +217,185 @@ void mouseMotion(int x, int y)
 
 
 		////////노란공 백터////////
-		if (sqrt((point[0][0]-yellowBall.transform->position.x)*(point[0][0] - yellowBall.transform->position.x)+
-				(point[0][1]- yellowBall.transform->position.y)*(point[0][1] - yellowBall.transform->position.y))<=RADIUS) {
+		if (start_point.distance(yellowBall.transform->position) <=RADIUS) {
 			yellowBall.transform->velocity.x = (point[1][0] - yellowBall.transform->position.x);
 			yellowBall.transform->velocity.y = (point[1][1] - yellowBall.transform->position.y);
 			//cout << "velocity(" << yellowBall.transform->velocity.x << "," << yellowBall.transform->velocity.y << ")"<<"length : "<< yellowBall.transform->velocity.length();
 			yellowBall.transform->velocity = yellowBall.transform->velocity * RATIO;//yellowBall.transform->velocity = yellowBall.transform->velocity.normalize() * 2;
 			yellowBall.transform->SetAccel();
+			start_point = yellowBall.transform->position;
 			//cout << "unit : (" << "v" << yellowBall.transform->velocity.x << "," << yellowBall.transform->velocity.y << ")" << endl;
 			//cout << "unit : (" << "a" << yellowBall.transform->GetAccel().x << "," << yellowBall.transform->GetAccel().y << ")" << endl;
 		}
-		else if (sqrt((point[0][0] - redBall.transform->position.x)*(point[0][0] - redBall.transform->position.x) +
-				(point[0][1] - redBall.transform->position.y)*(point[0][1] - redBall.transform->position.y)) <= RADIUS) { 
+		else if (start_point.distance(redBall.transform->position) <= RADIUS) {
 			redBall.transform->velocity.x = (point[1][0] - redBall.transform->position.x);
 			redBall.transform->velocity.y = (point[1][1] - redBall.transform->position.y);
 			redBall.transform->velocity = redBall.transform->velocity * RATIO;
 			redBall.transform->SetAccel();
+			start_point = redBall.transform->position;
 		}
-		else if (sqrt((point[0][0] - whiteBall.transform->position.x)*(point[0][0] - whiteBall.transform->position.x) +
-				(point[0][1] - whiteBall.transform->position.y)*(point[0][1] - whiteBall.transform->position.y)) <= RADIUS) {
+		else if (start_point.distance(whiteBall.transform->position) <= RADIUS) {
 			whiteBall.transform->velocity.x = (point[1][0] - whiteBall.transform->position.x);
 			whiteBall.transform->velocity.y = (point[1][1] - whiteBall.transform->position.y);
 			whiteBall.transform->velocity = whiteBall.transform->velocity * RATIO;
 			whiteBall.transform->SetAccel();
+			start_point = whiteBall.transform->position;
 		}
 
 		
 	}
 	glutPostRedisplay();
 }
-float lineBallDis(Vector3 start, Vector3 end, Vector3 O) {
+
+
+float lineBallDistance(Vector3 start, Vector3 end, Vector3 ball) {
 	float a = end.y - start.y;
 	float b = start.x - end.x;
 	float c = start.y*end.x - start.x*end.y;
 	float distance;
-	distance = fabs(a*O.x + b*O.y + c)/sqrt(a*a + b*b);
+	distance = fabs(a*ball.x + b*ball.y + c) / sqrt(a*a + b*b);
 	return distance;
 }
-void lineTrace()
-{
+void lineBall(Vector3 &start, Vector3 &end, Vector3 &reflect_point, Vector3 ball) {
+	float d1 = lineBallDistance(start, end, ball);
+	float D = start.distance(ball);
+	reflect_point = start + ((end - start).normalize()*(sqrt(D*D - d1*d1) - sqrt(4 * RADIUS*RADIUS - d1*d1)));
+	Vector3 thisdir = end - reflect_point;
+	Vector3 tempdir = ball - reflect_point;
+	tempdir.normalize();
+	line_end = reflect_point + (thisdir - tempdir*((thisdir.x*tempdir.x + thisdir.y*tempdir.y))*e)*MAXLINE;
+}
+void lineWall(Vector3 start) {
+	/*벽좌표*/
 	float RIGHTWALL = 450;
 	float LEFTWALL = 50;
 	float TOPWALL = 850;
 	float BOTTOMWALL = 50;
 
+	if (line_end.x > RIGHTWALL - RADIUS) {
+		reflect_point[count_reflect] = start + ((line_end - start) / (line_end.x - start.x)) *(RIGHTWALL - RADIUS - start.x);
+		line_end = reflect_point[count_reflect] + Vector3(((reflect_point[count_reflect] - start).x*(-1)), (reflect_point[count_reflect] - start).y, (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
+		cout << "right" << endl;
+		if (reflect_point[count_reflect].y < BOTTOMWALL + RADIUS) {
+			reflect_point[count_reflect] = start + ((reflect_point[count_reflect] - start) / (start.y - reflect_point[count_reflect].y))*(start.y - BOTTOMWALL - RADIUS);
+			line_end = reflect_point[count_reflect] + Vector3((reflect_point[count_reflect] - start).x, (reflect_point[count_reflect] - start).y*(-1), (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
+			cout << "right + bottom" << endl;
+		}
+		else if (reflect_point[count_reflect].y > TOPWALL - RADIUS) {
+			reflect_point[count_reflect] = start + ((reflect_point[count_reflect] - start) / (reflect_point[count_reflect].y - start.y)) *(TOPWALL - RADIUS - start.y);
+			line_end = reflect_point[count_reflect] + Vector3(((reflect_point[count_reflect] - start).x), (reflect_point[count_reflect] - start).y*(-1), (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
+			cout << "right+top" << endl;
+		}
+		//cout << "reflect_point : (" << reflect_point[count_reflect].x << "," << reflect_point[count_reflect].y << ")" << endl;
+		//cout << "first vector : ("<< (((end - start) / (end.x - start.x))).x << "," << (((end - start) / (end.x - start.x))).y << ")" << endl;
+		//cout << "second vector :(" << ((reflect_point[count_reflect] - start).x*(-1)) << "," << (reflect_point[count_reflect] - start).y <<  ")" << endl;
+		//cout << "line_end : (" << line_end.x << "," << line_end.y << "," << line_end.z << ")" << endl;
+		//cout << endl;
+	}
+	else if (line_end.x < LEFTWALL+ RADIUS) {
+		reflect_point[count_reflect] = start + ((line_end - start) / (start.x - line_end.x))*(start.x - LEFTWALL- RADIUS);
+		line_end = reflect_point[count_reflect] + Vector3((reflect_point[count_reflect] - start).x*(-1), (reflect_point[count_reflect] - start).y, (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
+		cout << "left" << endl;
+		if (reflect_point[count_reflect].y < BOTTOMWALL + RADIUS) {
+			reflect_point[count_reflect] = start + ((reflect_point[count_reflect] - start) / (start.y - reflect_point[count_reflect].y))*(start.y - BOTTOMWALL - RADIUS);
+			line_end = reflect_point[count_reflect] + Vector3(((reflect_point[count_reflect] - start).x), (reflect_point[count_reflect] - start).y*(-1), (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
+			cout << "left_bottom" << endl;
+		}
+		else if (reflect_point[count_reflect].y > TOPWALL - RADIUS) {
+			reflect_point[count_reflect] = start + ((reflect_point[count_reflect] - start) / (reflect_point[count_reflect].y - start.y)) *(TOPWALL- RADIUS - start.y);
+			line_end = reflect_point[count_reflect] + Vector3(((reflect_point[count_reflect] - start).x), (reflect_point[count_reflect] - start).y*(-1), (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
+			cout << "left+top" << endl;
+		}
+	}
+	else if (line_end.y > TOPWALL - RADIUS) {
+		reflect_point[count_reflect] = start + ((line_end - start) / (line_end.y - start.y)) *(TOPWALL - RADIUS - start.y);
+		line_end = reflect_point[count_reflect] + Vector3(((reflect_point[count_reflect] - start).x), (reflect_point[count_reflect] - start).y*(-1), (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
+		cout << "top" << endl;
+		if (reflect_point[count_reflect].x > RIGHTWALL - RADIUS) {
+			reflect_point[count_reflect] = start + ((reflect_point[count_reflect] - start) / (reflect_point[count_reflect].x - start.x)) *(RIGHTWALL - RADIUS - start.x);
+			line_end = reflect_point[count_reflect] + Vector3(((reflect_point[count_reflect] - start).x*(-1)), (reflect_point[count_reflect] - start).y, (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
+			cout << "top+right" << endl;
+		}
+		else if (reflect_point[count_reflect].x < LEFTWALL + RADIUS) {
+			reflect_point[count_reflect] = start + ((reflect_point[count_reflect] - start) / (start.x - reflect_point[count_reflect].x))*(start.x - LEFTWALL - RADIUS);
+			line_end = reflect_point[count_reflect] + Vector3((reflect_point[count_reflect] - start).x*(-1), (reflect_point[count_reflect] - start).y, (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
+			cout << "top + left" << endl;
+		}
+	}
+	else if (line_end.y < BOTTOMWALL + RADIUS) {
+		reflect_point[count_reflect] = start + ((line_end - start) / (start.y - line_end.y))*(start.y - BOTTOMWALL - RADIUS);
+		line_end = reflect_point[count_reflect] + Vector3((reflect_point[count_reflect] - start).x, (reflect_point[count_reflect] - start).y*(-1), (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
+		cout << "bottom" << endl;
+		if (reflect_point[count_reflect].x > RIGHTWALL - RADIUS) {
+			reflect_point[count_reflect] = start + ((reflect_point[count_reflect] - start) / (reflect_point[count_reflect].x - start.x)) *(RIGHTWALL - RADIUS - start.x);
+			line_end = reflect_point[count_reflect] + Vector3(((reflect_point[count_reflect] - start).x*(-1)), (reflect_point[count_reflect] - start).y, (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
+			cout << "bottom+right" << endl;
+		}
+		else if (reflect_point[count_reflect].x < LEFTWALL + RADIUS) {
+			reflect_point[count_reflect] = start + ((reflect_point[count_reflect] - start) / (start.x - reflect_point[count_reflect].x))*(start.x - LEFTWALL - RADIUS);
+			line_end = reflect_point[count_reflect] + Vector3((reflect_point[count_reflect] - start).x*(-1), (reflect_point[count_reflect] - start).y, (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
+			cout << "bottom+left" << endl;
+		}
+	}
+}
+bool planEq(Vector3 start, Vector3 ball,Vector3 X) {//공과 시작점의 벡터를 법선벡터로하는 평면의 방정식.X가 평면위인지 아래인지 확인.
+	Vector3 n = ball - start;
+	Vector3 ap = X - start;
+	if (((n.x*ap.x) + (n.y*ap.y)) > 0) return 1;//0보다 크면1
+	else return 0;
+}
+void lineTrace()
+{
 	Vector3 start = start_point;
-	Vector3 end = line_end;
-	cout << "line_end : (" << line_end.x << "," << line_end.y << "," << line_end.z << ")" << endl;
+	//cout << "line_end : (" << line_end.x << "," << line_end.y << "," << line_end.z << ")" << endl;
 	/*노란공을 움직인다면*/
-	if (sqrt((point[0][0] - yellowBall.transform->position.x)*(point[0][0] - yellowBall.transform->position.x) +
-		(point[0][1] - yellowBall.transform->position.y)*(point[0][1] - yellowBall.transform->position.y)) <= RADIUS) {
-	//	//for (int i = 0; i < 5; i++) {
+	if (start_point.distance(yellowBall.transform->position) <= RADIUS) {
+		for (int i = 0; i < 5; i++) {
 		count_reflect++;
 
-		float d1 = lineBallDis(start, end, redBall.transform->position);
-		float d2 = lineBallDis(start, end, whiteBall.transform->position);
-		if (d1 < (2 * RADIUS)) {//빨간공과 부딪친다면(반대쪽 처리해야함.)
-			cout << "redball" << endl;
-			float D = start.distance(redBall.transform->position);
-			reflect_point[count_reflect] = start + ((end - start).normalize()*(sqrt(D*D - d1*d1) - sqrt(4 * RADIUS*RADIUS - d1*d1)));
-	//		Vector3 thisdir = end - reflect_point[count_reflect];
-	//		Vector3 tempdir = redBall.transform->position - redBall.transform->position;
-			line_end = Vector3(0, 0, 0);
-	//		line_end = reflect_point[count_reflect] + (end - reflect_point[count_reflect]) - tempdir*((thisdir.x*tempdir.x + thisdir.y*tempdir.y) / tempdir.length());
+		float d1 = lineBallDistance(start, line_end, redBall.transform->position);
+		float d2 = lineBallDistance(start, line_end, whiteBall.transform->position);
+		bool b1 = planEq(start, redBall.transform->position, redBall.transform->position);
+		bool b2 = planEq(start, whiteBall.transform->position, whiteBall.transform->position);
+		cout << "b2 : "<<b2<< endl;
+		if ((d1 < (2.0 * RADIUS)) && (planEq(start, redBall.transform->position, end_point) == b1) 
+			&&!(fabs((2.0 * RADIUS) - (start.distance(redBall.transform->position))) <= FLT_EPSILON)) {//빨간공과 부딪친다면
+
+			cout << "redball, 3거리 :"<< start.distance(redBall.transform->position) << endl;
+			lineBall(start, line_end, reflect_point[count_reflect], redBall.transform->position);
 		}
-		else if (d2 < (2 * RADIUS)) {//흰공과 부딪친다면
-			cout << "wball" << endl;
-									 //		float D = start.distance(whiteBall.transform->position);
-	//		reflect_point[count_reflect] = start + ((end - start).normalize()*(sqrt(D*D - d2*d2) - sqrt(4 * RADIUS*RADIUS - d2*d2)));
-	//		Vector3 thisdir = end - reflect_point[count_reflect];
-	//		Vector3 tempdir = whiteBall.transform->position - whiteBall.transform->position;
-	//		line_end = reflect_point[count_reflect] + (end - reflect_point[count_reflect]) - tempdir*((thisdir.x*tempdir.x + thisdir.y*tempdir.y) / tempdir.length());
+		else if ((d2 < (2 * RADIUS)) && (planEq(start, whiteBall.transform->position, end_point) == b2)) {//흰공과 부딪친다면
+			cout << "wball, "<< planEq(start, whiteBall.transform->position, end_point) << endl;
+			lineBall(start, line_end, reflect_point[count_reflect], whiteBall.transform->position);
 		}
 		/*Wall collision 8가지 경우*/
-		else if (line_end.x > RIGHTWALL - RADIUS) {
-			reflect_point[count_reflect] = start + ((end - start) / (end.x - start.x)) *(RIGHTWALL - RADIUS - start.x);
-			line_end = reflect_point[count_reflect] + Vector3(((reflect_point[count_reflect] - start).x*(-1)), (reflect_point[count_reflect] - start).y, (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
-			cout << "right" << endl;
-			if (reflect_point[count_reflect].y < BOTTOMWALL + RADIUS) {
-				reflect_point[count_reflect] = start + ((end - start) / (start.y - end.y))*(start.y - BOTTOMWALL - RADIUS);
-				line_end = reflect_point[count_reflect] + Vector3((reflect_point[count_reflect] - start).x, (reflect_point[count_reflect] - start).y*(-1), (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
-				cout << "right + bottom" << endl;
-			}
-			else if (reflect_point[count_reflect].y > TOPWALL - RADIUS) {
-				reflect_point[count_reflect] = start + ((end - start) / (end.y - start.y)) *(TOPWALL - RADIUS - start.y);
-				line_end = reflect_point[count_reflect] + Vector3(((reflect_point[count_reflect] - start).x), (reflect_point[count_reflect] - start).y*(-1), (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
-				cout << "right+top" << endl;
-			}
-			//cout << "reflect_point : (" << reflect_point[count_reflect].x << "," << reflect_point[count_reflect].y << ")" << endl;
-			//cout << "first vector : ("<< (((end - start) / (end.x - start.x))).x << "," << (((end - start) / (end.x - start.x))).y << ")" << endl;
-			//cout << "second vector :(" << ((reflect_point[count_reflect] - start).x*(-1)) << "," << (reflect_point[count_reflect] - start).y <<  ")" << endl;
-			//cout << "line_end : (" << line_end.x << "," << line_end.y << "," << line_end.z << ")" << endl;
-			//cout << endl;
-		}
-		else if (line_end.x < LEFTWALL + RADIUS) {
-			reflect_point[count_reflect] = start + ((end - start) / (start.x - end.x))*(start.x - LEFTWALL - RADIUS);
-			line_end = reflect_point[count_reflect] + Vector3((reflect_point[count_reflect] - start).x*(-1), (reflect_point[count_reflect] - start).y, (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
-			cout << "left" << endl;
-			if (reflect_point[count_reflect].y < BOTTOMWALL + RADIUS) {
-				reflect_point[count_reflect] = start + ((end - start) / (start.y - end.y))*(start.y - BOTTOMWALL - RADIUS);
-				line_end = reflect_point[count_reflect] + Vector3((reflect_point[count_reflect] - start).x, (reflect_point[count_reflect] - start).y*(-1), (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
-				cout << "left_bottom" << endl;
-			}
-			else if (reflect_point[count_reflect].y > TOPWALL - RADIUS) {
-				reflect_point[count_reflect] = start + ((end - start) / (end.y - start.y)) *(TOPWALL - RADIUS - start.y);
-				line_end = reflect_point[count_reflect] + Vector3(((reflect_point[count_reflect] - start).x), (reflect_point[count_reflect] - start).y*(-1), (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
-				cout << "left+top" << endl;
-			}
-		}
-		else if (line_end.y > TOPWALL - RADIUS) {
-			reflect_point[count_reflect] = start + ((end - start) / (end.y - start.y)) *(TOPWALL - RADIUS - start.y);
-			line_end = reflect_point[count_reflect] + Vector3(((reflect_point[count_reflect] - start).x), (reflect_point[count_reflect] - start).y*(-1), (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
-			cout << "top" << endl;
-			if (reflect_point[count_reflect].x > RIGHTWALL - RADIUS) {
-				reflect_point[count_reflect] = start + ((end - start) / (end.x - start.x)) *(RIGHTWALL - RADIUS - start.x);
-				line_end = reflect_point[count_reflect] + Vector3(((reflect_point[count_reflect] - start).x*(-1)), (reflect_point[count_reflect] - start).y, (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
-				cout << "top+right" << endl;
-			}
-			else if (reflect_point[count_reflect].x < LEFTWALL + RADIUS) {
-				reflect_point[count_reflect] = start + ((end - start) / (start.x - end.x))*(start.x - LEFTWALL - RADIUS);
-				line_end = reflect_point[count_reflect] + Vector3((reflect_point[count_reflect] - start).x*(-1), (reflect_point[count_reflect] - start).y, (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
-				cout << "top + left" << endl;
-			}
-		}
-		else if (line_end.y < BOTTOMWALL + RADIUS) {
-			reflect_point[count_reflect] = start + ((end - start) / (start.y - end.y))*(start.y - BOTTOMWALL - RADIUS);
-			line_end = reflect_point[count_reflect] + Vector3((reflect_point[count_reflect] - start).x, (reflect_point[count_reflect] - start).y*(-1), (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
-			cout << "bottom" << endl;
-			if (reflect_point[count_reflect].x > RIGHTWALL - RADIUS) {
-				reflect_point[count_reflect] = start + ((end - start) / (end.x - start.x)) *(RIGHTWALL - RADIUS - start.x);
-				line_end = reflect_point[count_reflect] + Vector3(((reflect_point[count_reflect] - start).x*(-1)), (reflect_point[count_reflect] - start).y, (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
-				cout << "bottom+right" << endl;
-			}
-			else if (reflect_point[count_reflect].x < LEFTWALL + RADIUS) {
-				reflect_point[count_reflect] = start + ((end - start) / (start.x - end.x))*(start.x - LEFTWALL - RADIUS);
-				line_end = reflect_point[count_reflect] + Vector3((reflect_point[count_reflect] - start).x*(-1), (reflect_point[count_reflect] - start).y, (reflect_point[count_reflect] - start).z).normalize()*MAXLINE;
-				cout << "bottom+left" << endl;
-			}
-		}
-		//이부분에서 reflect_point[count_reflect] 를 중심으로하는 당구공(반투명?) 그려주면 더 좋을 듯.
-
+		else lineWall(start);
+		//여기서 reflect_point[count_reflect] 를 중심으로하는 당구공(반투명?) 그려주면 더 좋을 듯.
 		start = reflect_point[count_reflect];
-		end = start + (line_end - start).normalize();
-		//}
+		}
+	}
+	/*흰공을 움직인다면*/
+	else if (start_point.distance(whiteBall.transform->position) <= RADIUS) {
+		for (int i = 0; i < 5; i++) {
+			count_reflect++;
+
+			float d1 = lineBallDistance(start, line_end, redBall.transform->position);
+			float d2 = lineBallDistance(start, line_end, yellowBall.transform->position);
+			bool b1 = planEq(start, redBall.transform->position, redBall.transform->position);
+			bool b2 = planEq(start, yellowBall.transform->position, yellowBall.transform->position);
+			if ((d1 < (2 * RADIUS)) && (planEq(start, redBall.transform->position, end_point) == b1)) {//빨간공과 부딪친다면(반대쪽 처리해야함.)
+				cout << "redball" << endl;
+				lineBall(start, line_end, reflect_point[count_reflect], redBall.transform->position);
+			}
+			else if ((d2 < (2 * RADIUS)) && (planEq(start, yellowBall.transform->position, end_point) == b2)) {//노란공과 부딪친다면
+				cout << "yball" << endl;
+				lineBall(start, line_end, reflect_point[count_reflect], yellowBall.transform->position);
+			}
+			/*Wall collision 8가지 경우*/
+			else lineWall(start);
+			//여기서 reflect_point[count_reflect] 를 중심으로하는 당구공(반투명?) 그려주면 더 좋을 듯.
+			start = reflect_point[count_reflect];
+		}
 	}
 	cout << endl;
 	glutPostRedisplay();

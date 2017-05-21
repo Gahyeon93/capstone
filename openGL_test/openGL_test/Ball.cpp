@@ -215,3 +215,6 @@ void Wall::Draw()
 		glVertex2f(GameObject::originX, GameObject::originY + GameObject::HEIGHT);
 	glEnd();
 }
+
+
+
